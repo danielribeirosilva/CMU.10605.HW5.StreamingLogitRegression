@@ -2,47 +2,182 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map.Entry;
 
 
 public class LR {
-
+	
+	// tokenizes the document and attributes a numerical value to each token
+	// that value is based on the token hashcode
+	static HashMap<Integer, Integer> tokenizeDoc(String cur_doc, int N) {
+        String[] words = cur_doc.split("\\s+");
+        HashMap<Integer, Integer> tokens = new HashMap<Integer, Integer>();
+        int wordHash;
+        for (int i = 0; i < words.length; i++) {
+        	words[i] = words[i].replaceAll("\\W", "");
+        	if (words[i].length() > 0) {
+        		wordHash = words[i].hashCode()%N;
+        		if(wordHash<0){ 
+        			wordHash += N;
+        		}
+        		
+        		if(tokens.containsKey(wordHash)){
+        			tokens.put(wordHash, tokens.get(wordHash)+1);
+        		}
+        		else{
+        			tokens.put(wordHash, 1);
+        		}
+        	}
+        }
+        return tokens;
+	}
+	
+	
+	// ------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
+	// MAIN
+	// ------------------------------------------------------------------------------------------------
+	// ------------------------------------------------------------------------------------------------
+	
+	
 	public static void main(String[] args) {
+		
+		//Check if all parameters have been provided
+		if(args.length < 6)
+		{
+			System.err.println("Not all arguments were provided");
+			return;
+		}
+
+		//Read parameters
+		int vocabSize = Integer.parseInt(args[0]);
+		double initialLearningRate = Double.parseDouble(args[1]);
+		double regCoeff = Double.parseDouble(args[2]);
+		int maxIter = Integer.parseInt(args[3]);
+		int trainingSize = Integer.parseInt(args[4]);
+		String testFile = args[5];
 		
 		String[] existingLabels = {"ca","de","el","es","fr","ga","hr","hu","nl","pl","pt","ru","sl","tr"};
 		int totalLabels = existingLabels.length;
 		
+		//link label to a number
+		HashMap<String,Integer> labelPos = new HashMap<String,Integer>();
+		for(int i=0; i<totalLabels; i++){
+			labelPos.put(existingLabels[i], i);
+		}
+		
+		//Weight vectors
+		double[][] weight = new double[totalLabels][vocabSize];
+		//Last update tracker
+		int[][] lastUpdate = new int[totalLabels][vocabSize];
+		
+		
+		//--------------------------------------------------------------------------------------------------
+		// TRAINING
+		//--------------------------------------------------------------------------------------------------
+		
 		try {
 			
 	        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-	        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(System.out));
-	        
 	        String line = br.readLine();
 	        
-			while (line != null) {
-				
-				
-				//read labels and words
-				String[] labelsAndTokens = line.split("\\t",2);
-				String[] labels = labelsAndTokens[0].split(",");
-				String[] tokens = labelsAndTokens[1].split("\\s+");				
-				
-				//for each label
-				for(String label : labels){
+	        //variables
+	        int currentStep;
+	        double currentLearningRate = initialLearningRate, p, y, betaDotX;
+	        
+	        //loops through the data. Each loop represents going once through the entire data  
+	        for(int t=1; t<=maxIter; t++){
+	        	
+	        	//adjust learning rate
+	        	currentLearningRate /= (double)(t*t);
+	        	
+	        	//loops through the points of the data set
+	        	currentStep = 0;
+				while (line != null && currentStep < trainingSize) {
 					
+					//read labels and words
+					String[] labelsAndTokens = line.split("\\t",2);
+					String[] labels = labelsAndTokens[0].split(",");
+					HashSet<Integer> positiveLabelsPos = new HashSet<Integer>();
+					for(String label : labels){
+						positiveLabelsPos.add(labelPos.get(label));
+					}
 					
-				}//end for label
+					HashMap<Integer, Integer> tokens = tokenizeDoc(labelsAndTokens[1],vocabSize);				
+					
+					//for each label
+					for(int currentPos=0; currentPos<totalLabels; currentPos++){
+						
+						//compute p
+						betaDotX = 0D;
+						for(Entry<Integer, Integer> pair : tokens.entrySet()){
+							betaDotX += pair.getValue()*weight[currentPos][pair.getValue()];
+						}
+						betaDotX = Math.exp(betaDotX);
+						p = betaDotX / (1D + betaDotX);
+						
+						//compute y
+						 y = positiveLabelsPos.contains(currentPos) ? 1D : 0D;
+						
+						
+						//for each word, update weight
+						for(Entry<Integer, Integer> pair : tokens.entrySet()){
+							//regularization accummulated updates
+							weight[currentPos][pair.getValue()] *= Math.pow(1D-2D*currentLearningRate*regCoeff, currentStep-lastUpdate[currentPos][pair.getValue()]);
+							//gradient of loss update
+							weight[currentPos][pair.getValue()] += currentLearningRate*(y-p)*pair.getValue();
+							//update last update info
+							lastUpdate[currentPos][pair.getValue()] = currentStep;
+						}
+						
+					}//end of label loop
+					
+					line = br.readLine();	
+					currentStep++;
+					
+				}//end of points loop (points in batch)
 				
 				
-				line = br.readLine();	
-			}
+				//end of batch -> update all words from all labels
+				currentStep--;
+				for(int currentPos=0; currentPos<totalLabels; currentPos++){
+					for(int currentToken=0; currentToken<vocabSize; currentToken++){
+						weight[currentPos][currentToken] *= Math.pow(1D-2D*currentLearningRate*regCoeff, currentStep-lastUpdate[currentPos][currentToken]);
+					}	
+				}
+				
+				
+	        }//end of t loop (batch loop)
 			
-			bw.flush();
 			br.close();
 			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		
+		
+		
+		//--------------------------------------------------------------------------------------------------
+		// TESTING
+		//--------------------------------------------------------------------------------------------------
+		
+		try{
+			
+			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(System.out));
+			
+			
+			
+			
+			bw.flush();
+			bw.close();
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		
 
 	}
 
