@@ -10,6 +10,15 @@ import java.util.Map.Entry;
 
 public class LR {
 	
+	static double overflow=20;
+	
+    protected static double sigmoid(double score) {
+       if (score > overflow) score =overflow;
+       else if (score < -overflow) score = -overflow;
+       double exp = Math.exp(score);
+       return exp / (1 + exp);
+    }
+	
 	// tokenizes the document and attributes a numerical value to each token
 	// that value is based on the token hashcode
 	static HashMap<Integer, Integer> tokenizeDoc(String cur_doc, int N) {
@@ -34,6 +43,9 @@ public class LR {
         }
         return tokens;
 	}
+	
+	
+	
 	
 	
 	// ------------------------------------------------------------------------------------------------
@@ -116,8 +128,7 @@ public class LR {
 						for(Entry<Integer, Integer> pair : tokens.entrySet()){
 							betaDotX += pair.getValue()*weight[currentPos][pair.getKey()];
 						}
-						betaDotX = Math.exp(betaDotX);
-						p = betaDotX / (1D + betaDotX);
+						p = sigmoid(betaDotX);
 						
 						//compute y
 						 y = positiveLabelsPos.contains(currentPos) ? 1D : 0D;
@@ -160,18 +171,6 @@ public class LR {
 		
 		
 		
-		//debug
-		/*
-		for(int currentPos=0; currentPos<totalLabels; currentPos++){
-			System.out.println(existingLabels[currentPos]);
-			for(int i = 0; i<30; i++){
-				System.out.print(String.valueOf(weight[currentPos][i])+" ");
-			}
-			System.out.println();
-		}
-		*/
-		
-		
 		//--------------------------------------------------------------------------------------------------
 		// TESTING
 		//--------------------------------------------------------------------------------------------------
@@ -197,8 +196,7 @@ public class LR {
 					for(Entry<Integer, Integer> pair : tokens.entrySet()){
 						betaDotX += pair.getValue()*weight[currentPos][pair.getKey()];
 					}
-					betaDotX = Math.exp(betaDotX);
-					score = betaDotX / (1D + betaDotX);
+					score = sigmoid(betaDotX);
 					
 					if(currentPos == 0){
 						bw.append(existingLabels[currentPos] + "\t" + String.valueOf(score));
