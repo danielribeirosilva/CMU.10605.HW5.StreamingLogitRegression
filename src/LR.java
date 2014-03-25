@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.HashMap;
@@ -59,7 +60,7 @@ public class LR {
 		int trainingSize = Integer.parseInt(args[4]);
 		String testFile = args[5];
 		
-		String[] existingLabels = {"ca","de","el","es","fr","ga","hr","hu","nl","pl","pt","ru","sl","tr"};
+		String[] existingLabels = {"nl","el","ru","sl","pl","ca","fr","tr","hu","de","hr","es","ga","pt"};
 		int totalLabels = existingLabels.length;
 		
 		//link label to a number
@@ -79,7 +80,7 @@ public class LR {
 		//--------------------------------------------------------------------------------------------------
 		
 		try {
-			
+			//BufferedReader br = new BufferedReader(new FileReader(testFile));
 	        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 	        String line = br.readLine();
 	        
@@ -91,11 +92,12 @@ public class LR {
 	        for(int t=1; t<=maxIter; t++){
 	        	
 	        	//adjust learning rate
-	        	currentLearningRate /= (double)(t*t);
+	        	currentLearningRate = initialLearningRate/(t*t);
 	        	
 	        	//loops through the points of the data set
 	        	currentStep = 0;
 				while (line != null && currentStep < trainingSize) {
+					currentStep++;
 					
 					//read labels and words
 					String[] labelsAndTokens = line.split("\\t",2);
@@ -104,7 +106,6 @@ public class LR {
 					for(String label : labels){
 						positiveLabelsPos.add(labelPos.get(label));
 					}
-					
 					HashMap<Integer, Integer> tokens = tokenizeDoc(labelsAndTokens[1],vocabSize);				
 					
 					//for each label
@@ -113,7 +114,7 @@ public class LR {
 						//compute p
 						betaDotX = 0D;
 						for(Entry<Integer, Integer> pair : tokens.entrySet()){
-							betaDotX += pair.getValue()*weight[currentPos][pair.getValue()];
+							betaDotX += pair.getValue()*weight[currentPos][pair.getKey()];
 						}
 						betaDotX = Math.exp(betaDotX);
 						p = betaDotX / (1D + betaDotX);
@@ -125,29 +126,29 @@ public class LR {
 						//for each word, update weight
 						for(Entry<Integer, Integer> pair : tokens.entrySet()){
 							//regularization accummulated updates
-							weight[currentPos][pair.getValue()] *= Math.pow(1D-2D*currentLearningRate*regCoeff, currentStep-lastUpdate[currentPos][pair.getValue()]);
+							weight[currentPos][pair.getKey()] *= Math.pow(1D-2D*currentLearningRate*regCoeff, currentStep-lastUpdate[currentPos][pair.getKey()]);
 							//gradient of loss update
-							weight[currentPos][pair.getValue()] += currentLearningRate*(y-p)*pair.getValue();
+							weight[currentPos][pair.getKey()] += currentLearningRate*(y-p)*pair.getValue();
 							//update last update info
-							lastUpdate[currentPos][pair.getValue()] = currentStep;
+							lastUpdate[currentPos][pair.getKey()] = currentStep;
 						}
 						
 					}//end of label loop
 					
 					line = br.readLine();	
-					currentStep++;
 					
 				}//end of points loop (points in batch)
 				
 				
 				//end of batch -> update all words from all labels
-				currentStep--;
 				for(int currentPos=0; currentPos<totalLabels; currentPos++){
 					for(int currentToken=0; currentToken<vocabSize; currentToken++){
 						weight[currentPos][currentToken] *= Math.pow(1D-2D*currentLearningRate*regCoeff, currentStep-lastUpdate[currentPos][currentToken]);
 					}	
 				}
 				
+				//reinitialize last update
+				lastUpdate = new int[totalLabels][vocabSize];
 				
 	        }//end of t loop (batch loop)
 			
@@ -159,17 +160,59 @@ public class LR {
 		
 		
 		
+		//debug
+		/*
+		for(int currentPos=0; currentPos<totalLabels; currentPos++){
+			System.out.println(existingLabels[currentPos]);
+			for(int i = 0; i<30; i++){
+				System.out.print(String.valueOf(weight[currentPos][i])+" ");
+			}
+			System.out.println();
+		}
+		*/
+		
+		
 		//--------------------------------------------------------------------------------------------------
 		// TESTING
 		//--------------------------------------------------------------------------------------------------
 		
 		try{
 			
+			BufferedReader br = new BufferedReader(new FileReader(testFile));
 			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(System.out));
 			
+			String line = br.readLine();
 			
+			while (line != null) {
+				
+				//read labels and words
+				String[] labelsAndTokens = line.split("\\t",2);
+				HashMap<Integer, Integer> tokens = tokenizeDoc(labelsAndTokens[1],vocabSize);
+				
+				//compute score for each label
+				for(int currentPos=0; currentPos<totalLabels; currentPos++){
+					
+					//compute p
+					double betaDotX = 0D, score;
+					for(Entry<Integer, Integer> pair : tokens.entrySet()){
+						betaDotX += pair.getValue()*weight[currentPos][pair.getKey()];
+					}
+					betaDotX = Math.exp(betaDotX);
+					score = betaDotX / (1D + betaDotX);
+					
+					if(currentPos == 0){
+						bw.append(existingLabels[currentPos] + "\t" + String.valueOf(score));
+					}
+					else{
+						bw.append("," + existingLabels[currentPos] + "\t" + String.valueOf(score));
+					}
+				}
+				bw.append("\n");
+				
+				line = br.readLine();
+			}
 			
-			
+			br.close();
 			bw.flush();
 			bw.close();
 			
