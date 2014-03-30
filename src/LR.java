@@ -131,7 +131,7 @@ public class LR {
 						p = sigmoid(betaDotX);
 						
 						//compute y
-						 y = positiveLabelsPos.contains(currentPos) ? 1D : 0D;
+						y = positiveLabelsPos.contains(currentPos) ? 1D : 0D;
 						
 						
 						//for each word, update weight
