@@ -46,8 +46,6 @@ public class LR {
 	
 	
 	
-	
-	
 	// ------------------------------------------------------------------------------------------------
 	// ------------------------------------------------------------------------------------------------
 	// MAIN
@@ -103,6 +101,9 @@ public class LR {
 	        //loops through the data. Each loop represents going once through the entire data  
 	        for(int t=1; t<=maxIter; t++){
 	        	
+	        	//Set LCL to zero
+	        	//double LCL = 0D;
+	        	
 	        	//adjust learning rate
 	        	currentLearningRate = initialLearningRate/(t*t);
 	        	
@@ -142,6 +143,8 @@ public class LR {
 							weight[currentPos][pair.getKey()] += currentLearningRate*(y-p)*pair.getValue();
 							//update last update info
 							lastUpdate[currentPos][pair.getKey()] = currentStep;
+							//update LCL
+							//LCL += currentLearningRate*(y-p)*pair.getValue();
 						}
 						
 					}//end of label loop
@@ -157,6 +160,9 @@ public class LR {
 						weight[currentPos][currentToken] *= Math.pow(1D-2D*currentLearningRate*regCoeff, currentStep-lastUpdate[currentPos][currentToken]);
 					}	
 				}
+				
+				//print LCL
+				//System.out.println("LCL at iteration "+String.valueOf(t)+" -> "+String.valueOf(LCL));
 				
 				//reinitialize last update
 				lastUpdate = new int[totalLabels][vocabSize];

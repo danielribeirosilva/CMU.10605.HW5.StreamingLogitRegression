@@ -2,15 +2,16 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.PriorityQueue;
 
 
-public class ResultEvaluator {
+public class ResultEvaluatorNB {
 
 	
 	public static void main(String[] args) {
 		
-		String testScoresFile = "/Users/daniel/Documents/Codes/ML605/HW5StreamingLogitRegression/src/question3-1000000.txt";
-		String testTrueLabelsFile = "/Users/daniel/Documents/Codes/ML605/HW5StreamingLogitRegression/data/abstract.test";
+		String testScoresFile = "/Users/daniel/Documents/Codes/ML605/HW5StreamingLogitRegression/src/question4-tiny.txt";
+		String testTrueLabelsFile = "/Users/daniel/Documents/Codes/ML605/HW5StreamingLogitRegression/data/abstract.tiny.test";
 		
 		String[] existingLabels = {"nl","el","ru","sl","pl","ca","fr","tr","hu","de","hr","es","ga","pt"};
 		HashSet<String> allLabels = new HashSet<String>(Arrays.asList(existingLabels));
@@ -38,11 +39,17 @@ public class ResultEvaluator {
 				String[] predictions = lineScores.split("[\\t,]");
 				HashSet<String> predictedLabels = new HashSet<String>();
 				
+				//add predictions to priority queue
+				PriorityQueue<LabelScorePair> pq = new PriorityQueue<LabelScorePair>();
 				for(int i=0; i<predictions.length; i+=2){
-					if(Double.parseDouble(predictions[i+1])>0.5D){
-						predictedLabels.add(predictions[i]);
-					}
+					String currentLabel = predictions[i];
+					double currentScore = Double.parseDouble(predictions[i+1]);
+					pq.add(new LabelScorePair(currentLabel,currentScore));
 				}
+				
+				//make predictions (predict first 2)
+				predictedLabels.add(pq.poll().label);
+				//predictedLabels.add(pq.poll().label);
 				
 				for(String pred : predictedLabels){
 					if(trueLabelsSet.contains(pred)){
@@ -79,11 +86,13 @@ public class ResultEvaluator {
 			System.out.println("----------------------------------------");
 			System.out.println("Accuracy: "+String.valueOf(accuracy));
 			*/
+			
 			System.out.println(String.valueOf(totalTruePositives));
 			System.out.println(String.valueOf(totalTrueNegatives));
 			System.out.println(String.valueOf(totalFalsePositives));
 			System.out.println(String.valueOf(totalFalseNegatives));
 			System.out.println(String.valueOf(accuracy));
+			
 			
 		} catch (Exception e) {
 			e.printStackTrace();
